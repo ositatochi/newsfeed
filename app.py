@@ -1,5 +1,5 @@
 from pathlib import Path
-from flask import Flask, render_template, request, redirect, url_for, abort, jsonify
+from flask import Flask, render_template, request, redirect, url_for, abort
 from db import get_conn
 from helpers import generate_engagement_suggestions
 
@@ -18,7 +18,7 @@ def index():
     cursor = conn.cursor()
 
     query = """
-        SELECT a.id, a.title, a.url, a.published_at, a.fetched_at, a.summary, a.category, a.origin, s.name as source_name
+        SELECT a.id, a.title, a.url, a.published_at, a.fetched_at, a.summary, a.reading_time, a.category, a.origin, s.name as source_name
         FROM articles a
         JOIN sources s ON a.source_id = s.id
         WHERE a.status = 'new'
@@ -32,7 +32,6 @@ def index():
         query += " AND a.origin = ?"
         params.append(origin)
 
-    # Total count for pagination
     count_query = f"SELECT COUNT(*) FROM ({query})"
     cursor.execute(count_query, params)
     total_articles = cursor.fetchone()[0]
@@ -44,7 +43,6 @@ def index():
     cursor.execute(query, params)
     articles = cursor.fetchall()
 
-    # Get Daily Quote
     cursor.execute("SELECT quote, author FROM quotes ORDER BY RANDOM() LIMIT 1")
     quote_row = cursor.fetchone()
     conn.close()
@@ -65,7 +63,7 @@ def article(article_id):
     conn = get_conn()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT a.id, a.title, a.url, a.published_at, a.fetched_at, a.summary, a.category, a.origin, s.name as source_name
+        SELECT a.id, a.title, a.url, a.published_at, a.fetched_at, a.summary, a.body_text, a.reading_time, a.category, a.origin, s.name as source_name
         FROM articles a
         JOIN sources s ON a.source_id = s.id
         WHERE a.id = ?
@@ -77,7 +75,9 @@ def article(article_id):
         abort(404)
 
     conn.close()
-    suggestions = generate_engagement_suggestions(art["title"], art["summary"], art["category"], art["origin"])
+    suggestions = generate_engagement_suggestions(
+        art["title"], art["summary"], art["body_text"], art["category"], art["origin"]
+    )
 
     return render_template("article.html", article=art, suggestions=suggestions)
 
