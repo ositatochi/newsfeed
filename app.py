@@ -1,6 +1,8 @@
 from pathlib import Path
+import random
 from flask import Flask, render_template, request, redirect, url_for, abort, send_from_directory
 from db import get_conn
+from helpers import generate_engagement_suggestions
 
 app = Flask(__name__)
 BASE_DIR = Path(__file__).parent
@@ -12,25 +14,64 @@ def uppercase_filter(s):
 
 @app.route("/")
 def index():
+    category = request.args.get("category", "All")
+    origin = request.args.get("origin", "All")
+    page = int(request.args.get("page", 1))
+    per_page = 10
+    offset = (page - 1) * per_page
+
     conn = get_conn()
     cursor = conn.cursor()
-    cursor.execute("""
-        SELECT a.id, a.title, a.url, a.published_at, a.fetched_at, a.summary, s.name as source_name
+
+    query = """
+        SELECT a.id, a.title, a.url, a.published_at, a.fetched_at, a.summary, a.category, a.origin, s.name as source_name
         FROM articles a
         JOIN sources s ON a.source_id = s.id
         WHERE a.status = 'new'
-        ORDER BY a.fetched_at DESC, a.id DESC
-    """)
+    """
+    params = []
+
+    if category != "All":
+        query += " AND a.category = ?"
+        params.append(category)
+    if origin != "All":
+        query += " AND a.origin = ?"
+        params.append(origin)
+
+    # Count total items for pagination
+    count_query = f"SELECT COUNT(*) FROM ({query})"
+    cursor.execute(count_query, params)
+    total_articles = cursor.fetchone()[0]
+    total_pages = (total_articles + per_page - 1) // per_page or 1
+
+    query += " ORDER BY a.fetched_at DESC, a.id DESC LIMIT ? OFFSET ?"
+    params.extend([per_page, offset])
+
+    cursor.execute(query, params)
     articles = cursor.fetchall()
+
+    # Get Daily Quote
+    cursor.execute("SELECT quote, author FROM quotes ORDER BY RANDOM() LIMIT 1")
+    quote_row = cursor.fetchone()
     conn.close()
-    return render_template("index.html", articles=articles)
+
+    return render_template(
+        "index.html",
+        articles=articles,
+        category=category,
+        origin=origin,
+        page=page,
+        total_pages=total_pages,
+        total_articles=total_articles,
+        quote=quote_row
+    )
 
 @app.route("/article/<int:article_id>")
 def article(article_id):
     conn = get_conn()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT a.id, a.title, a.url, a.published_at, a.fetched_at, a.summary, s.name as source_name
+        SELECT a.id, a.title, a.url, a.published_at, a.fetched_at, a.summary, a.category, a.origin, s.name as source_name
         FROM articles a
         JOIN sources s ON a.source_id = s.id
         WHERE a.id = ?
@@ -45,11 +86,25 @@ def article(article_id):
     rows = cursor.fetchall()
     conn.close()
 
+    suggestions = generate_engagement_suggestions(art["title"], art["summary"], art["category"])
+
     drafts = {p: "" for p in PLATFORMS}
     for row in rows:
         drafts[row["platform"]] = row["text"]
 
-    return render_template("article.html", article=art, drafts=drafts, platforms=PLATFORMS)
+    # Pre-populate draft suggestions if empty
+    if not drafts["linkedin"]:
+        drafts["linkedin"] = suggestions["linkedin"]
+    if not drafts["x"]:
+        drafts["x"] = suggestions["x"]
+
+    return render_template(
+        "article.html",
+        article=art,
+        drafts=drafts,
+        suggestions=suggestions,
+        platforms=PLATFORMS
+    )
 
 @app.route("/mark/<int:article_id>/<status>")
 def mark_status(article_id, status):
