@@ -5,6 +5,30 @@ from db import get_conn
 
 HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
 
+def fetch_online_quotes():
+    conn = get_conn()
+    cursor = conn.cursor()
+    new_quotes = 0
+    try:
+        resp = requests.get("https://zenquotes.io/api/quotes", headers=HEADERS, timeout=5)
+        if resp.status_code == 200:
+            for item in resp.json():
+                quote = item.get("q", "").strip()
+                author = item.get("a", "Unknown").strip()
+                if quote:
+                    cursor.execute(
+                        "INSERT OR IGNORE INTO quotes (quote, author) VALUES (?, ?)",
+                        (quote, author)
+                    )
+                    if cursor.rowcount > 0:
+                        new_quotes += 1
+    except Exception as e:
+        print(f"Quote crawl notice: {e}")
+
+    conn.commit()
+    conn.close()
+    print(f"Crawled {new_quotes} new quotes from the web.")
+
 def fetch_full_body(url):
     try:
         response = requests.get(url, headers=HEADERS, timeout=5)
@@ -17,17 +41,21 @@ def fetch_full_body(url):
         print(f"Could not scrape body for {url}: {e}")
     return ""
 
-def detect_category(title, summary):
+def detect_category(title, summary, default="Tech News"):
     text = f"{title} {summary}".lower()
-    if any(k in text for k in ['ai', 'llm', 'gpt', 'neural', 'machine learning', 'claude', 'openai', 'gemini']):
+    if any(k in text for k in ['hack', 'breach', 'vulnerability', 'phishing', 'malware', 'cyber', 'zero-day', 'ransomware', 'leak', 'attack']):
+        return "Cybersecurity & Hacks"
+    elif any(k in text for k in ['device', 'gadget', 'review', 'unboxing', 'launch', 'smartphone', 'apple', 'samsung', 'nvidia', 'chip', 'laptop']):
+        return "Gadgets & Hardware"
+    elif any(k in text for k in ['ai', 'llm', 'gpt', 'neural', 'machine learning', 'claude', 'openai', 'gemini', 'deepseek']):
         return "AI & ML"
     elif any(k in text for k in ['code', 'python', 'developer', 'software', 'git', 'api', 'bug', 'framework']):
         return "Software & Dev"
-    elif any(k in text for k in ['hack', 'security', 'breach', 'vulnerability', 'phishing', 'malware', 'cyber']):
-        return "Cybersecurity & Hacks"
-    return "Tech News"
+    return default
 
 def crawl():
+    fetch_online_quotes()
+
     conn = get_conn()
     cursor = conn.cursor()
     cursor.execute("SELECT id, name, feed_url, category, origin FROM sources WHERE active = 1")
@@ -46,7 +74,7 @@ def crawl():
                 if not url:
                     continue
 
-                category = detect_category(title, summary) or source["category"]
+                category = detect_category(title, summary, source["category"])
                 origin = source["origin"]
                 
                 # Scrape full body text
@@ -68,7 +96,7 @@ def crawl():
 
     conn.commit()
     conn.close()
-    print(f"Fetched {new_count} new articles with full body intel.")
+    print(f"Fetched {new_count} fresh articles across gadget, launch, hack, and breach sources.")
 
 if __name__ == "__main__":
     crawl()
