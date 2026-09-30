@@ -28,18 +28,25 @@ CREATE TABLE IF NOT EXISTS articles (
 
 CREATE TABLE IF NOT EXISTS quotes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    quote TEXT NOT NULL,
+    quote TEXT NOT NULL UNIQUE,
     author TEXT NOT NULL
 );
 """
 
 SEED_SOURCES = [
-    ("TechCrunch", "https://techcrunch.com/feed/", "Tech News", "Global / US"),
-    ("The Verge", "https://www.theverge.com/rss/index.xml", "Tech News", "Global / US"),
+    ("TechCrunch Main", "https://techcrunch.com/feed/", "Tech News", "Global / US"),
+    ("TechCrunch Hardware & Devices", "https://techcrunch.com/category/hardware/feed/", "Gadgets & Hardware", "Global / US"),
+    ("TechCrunch Enterprise & AI", "https://techcrunch.com/category/enterprise/feed/", "AI & ML", "Global / US"),
+    ("The Verge - Tech & Reviews", "https://www.theverge.com/rss/index.xml", "Gadgets & Hardware", "Global / US"),
     ("Hacker News", "https://news.ycombinator.com/rss", "Software & Dev", "Global / US"),
-    ("Ars Technica", "https://feeds.arstechnica.com/arstechnica/index", "Cybersecurity & Hacks", "Global / US"),
+    ("Ars Technica - Security & Hacks", "https://feeds.arstechnica.com/arstechnica/index", "Cybersecurity & Hacks", "Global / US"),
     ("MIT Tech Review", "https://www.technologyreview.com/feed/", "AI & ML", "Global / US"),
-    ("TechCabal", "https://techcabal.com/feed/", "Tech News", "Nigeria / Africa")
+    ("TechCabal", "https://techcabal.com/feed/", "Tech News", "Nigeria / Africa"),
+    ("BleepingComputer - Hacks & Breaches", "https://www.bleepingcomputer.com/feed/", "Cybersecurity & Hacks", "Global / US"),
+    ("Engadget - Gadgets & Launch", "https://www.engadget.com/rss.xml", "Gadgets & Hardware", "Global / US"),
+    ("CNET Tech Reviews", "https://www.cnet.com/rss/news/", "Gadgets & Hardware", "Global / US"),
+    ("TechNewsWorld", "https://www.technewsworld.com/feed/", "Software & Dev", "Global / US"),
+    ("Mashable Tech", "https://mashable.com/feeds/rss/tech", "Tech News", "Global / US")
 ]
 
 SEED_QUOTES = [
@@ -54,14 +61,21 @@ def main():
     conn = get_conn()
     with conn:
         conn.executescript(SCHEMA)
+        conn.execute("DELETE FROM quotes WHERE id NOT IN (SELECT MIN(id) FROM quotes GROUP BY quote)")
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_quotes_quote_unique ON quotes (quote)")
         for name, url, cat, origin in SEED_SOURCES:
             conn.execute(
-                "INSERT OR IGNORE INTO sources (name, feed_url, category, origin) VALUES (?, ?, ?, ?)",
+                """INSERT INTO sources (name, feed_url, category, origin) VALUES (?, ?, ?, ?)
+                ON CONFLICT(feed_url) DO UPDATE SET
+                    name = excluded.name,
+                    category = excluded.category,
+                    origin = excluded.origin""",
                 (name, url, cat, origin)
             )
         for q, a in SEED_QUOTES:
             conn.execute("INSERT OR IGNORE INTO quotes (quote, author) VALUES (?, ?)", (q, a))
     conn.close()
+    print("Database updated with device launch, hack, and review feeds.")
 
 if __name__ == "__main__":
     main()
