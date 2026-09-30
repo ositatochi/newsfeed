@@ -1,6 +1,6 @@
-flask
 feedparser
+requests
+beautifulsoup4
+flask
 apscheduler
 gunicorn
-beautifulsoup4
-requests
