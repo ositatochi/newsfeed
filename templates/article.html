@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+  <div class="card">
+    <div class="title">{{ article.title }}</div>
+    <div class="meta">{{ article.source_name }} · {{ article.published_at or article.fetched_at }}</div>
+    <div class="summary">{{ article.summary|striptags|truncate(300) }}</div>
+    <div class="row">
+      <a href="{{ article.url }}" target="_blank" rel="noopener" class="btn blue">Read Article</a>
+    </div>
+  </div>
+
+  {% set compose = {
+    'x': 'https://twitter.com/intent/tweet?text=',
+    'facebook': 'https://www.facebook.com/',
+    'linkedin': 'https://www.linkedin.com/feed/?shareActive=true'
+  } %}
+
+  {% for p in platforms %}
+    <div class="card">
+      <div class="title">{{ p | uppercase }}</div>
+      <form action="{{ url_for('save_draft', article_id=article.id, platform=p) }}" method="POST">
+        <textarea id="ta-{{ p }}" name="text" placeholder="Write {{ p }} draft here...">{{ drafts[p] }}</textarea>
+        <div class="row">
+          <button type="submit" class="btn primary">Save Draft</button>
+          <button type="button" class="btn" onclick="copyDraft('ta-{{ p }}')">Copy</button>
+          {% if p == 'x' %}
+            <a href="{{ compose[p] }}{{ drafts[p] | urlencode }}" target="_blank" class="btn blue">Open Platform</a>
+          {% else %}
+            <a href="{{ compose[p] }}" target="_blank" class="btn blue">Open Platform</a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  {% endfor %}
+
+  <form action="{{ url_for('mark_posted', article_id=article.id) }}" method="POST">
+    <button type="submit" class="btn success big">Mark as Posted</button>
+  </form>
+
+  <script>
+    async function copyDraft(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      try {
+        await navigator.clipboard.writeText(el.value);
+        flashBorder(el);
+      } catch (err) {
+        el.select();
+        document.execCommand('copy');
+        flashBorder(el);
+      }
+    }
+
+    function flashBorder(el) {
+      const orig = el.style.borderColor;
+      el.style.borderColor = '#166534';
+      setTimeout(() => {
+        el.style.borderColor = orig;
+      }, 1000);
+    }
+  </script>
+{% endblock %}
