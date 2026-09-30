@@ -17,21 +17,13 @@ CREATE TABLE IF NOT EXISTS articles (
     url TEXT NOT NULL UNIQUE,
     published_at TEXT,
     summary TEXT,
+    body_text TEXT,
+    reading_time INTEGER DEFAULT 1,
     category TEXT DEFAULT 'Tech News',
     origin TEXT DEFAULT 'Global / US',
     fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new','selected','rejected','posted')),
     FOREIGN KEY (source_id) REFERENCES sources (id)
-);
-
-CREATE TABLE IF NOT EXISTS drafts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    article_id INTEGER NOT NULL,
-    platform TEXT NOT NULL CHECK (platform IN ('x','facebook','linkedin')),
-    text TEXT NOT NULL,
-    posted_at DATETIME,
-    UNIQUE(article_id, platform),
-    FOREIGN KEY (article_id) REFERENCES articles (id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS quotes (
