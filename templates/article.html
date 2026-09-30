@@ -1,11 +1,26 @@
 {% extends "base.html" %}
+
 {% block content %}
   <div class="card">
+    <div class="card-header">
+      <span class="tag cat-tag">{{ article.category }}</span>
+      <span class="tag origin-tag">{{ article.origin }}</span>
+    </div>
     <div class="title">{{ article.title }}</div>
     <div class="meta">{{ article.source_name }} · {{ article.published_at or article.fetched_at }}</div>
-    <div class="summary">{{ article.summary|striptags|truncate(300) }}</div>
+    <div class="summary">{{ article.summary|striptags|truncate(350) }}</div>
     <div class="row">
-      <a href="{{ article.url }}" target="_blank" rel="noopener" class="btn blue">Read Article</a>
+      <a href="{{ article.url }}" target="_blank" rel="noopener" class="btn blue">Read Full Source Article</a>
+    </div>
+  </div>
+
+  <!-- AI Engagement Suggestion Hub -->
+  <div class="card suggestion-box">
+    <div class="title">💬 Suggested Quick Comment / Reply</div>
+    <p class="summary-sub">Copy this to leave a professional engagement comment under posts about this topic:</p>
+    <textarea id="comment-box" readonly>{{ suggestions.comment }}</textarea>
+    <div class="row">
+      <button type="button" class="btn accent" onclick="copyDraft('comment-box')">Copy Professional Comment</button>
     </div>
   </div>
 
@@ -17,12 +32,12 @@
 
   {% for p in platforms %}
     <div class="card">
-      <div class="title">{{ p | uppercase }}</div>
+      <div class="title">{{ p | uppercase }} Draft Post</div>
       <form action="{{ url_for('save_draft', article_id=article.id, platform=p) }}" method="POST">
         <textarea id="ta-{{ p }}" name="text" placeholder="Write {{ p }} draft here...">{{ drafts[p] }}</textarea>
         <div class="row">
           <button type="submit" class="btn primary">Save Draft</button>
-          <button type="button" class="btn" onclick="copyDraft('ta-{{ p }}')">Copy</button>
+          <button type="button" class="btn" onclick="copyDraft('ta-{{ p }}')">Copy Post</button>
           {% if p == 'x' %}
             <a href="{{ compose[p] }}{{ drafts[p] | urlencode }}" target="_blank" class="btn blue">Open Platform</a>
           {% else %}
@@ -34,7 +49,7 @@
   {% endfor %}
 
   <form action="{{ url_for('mark_posted', article_id=article.id) }}" method="POST">
-    <button type="submit" class="btn success big">Mark as Posted</button>
+    <button type="submit" class="btn success big">Mark as Posted & Return</button>
   </form>
 
   <script>
@@ -53,7 +68,7 @@
 
     function flashBorder(el) {
       const orig = el.style.borderColor;
-      el.style.borderColor = '#166534';
+      el.style.borderColor = '#e3a008';
       setTimeout(() => {
         el.style.borderColor = orig;
       }, 1000);
