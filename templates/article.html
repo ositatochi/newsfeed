@@ -1,77 +1,72 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <div class="card">
+  <div class="card main-article-card">
     <div class="card-header">
       <span class="tag cat-tag">{{ article.category }}</span>
       <span class="tag origin-tag">{{ article.origin }}</span>
     </div>
     <div class="title">{{ article.title }}</div>
-    <div class="meta">{{ article.source_name }} · {{ article.published_at or article.fetched_at }}</div>
-    <div class="summary">{{ article.summary|striptags|truncate(350) }}</div>
+    <div class="meta">Source: {{ article.source_name }} · {{ article.published_at or article.fetched_at }}</div>
+    <div class="summary">{{ article.summary|striptags|truncate(300) }}</div>
     <div class="row">
-      <a href="{{ article.url }}" target="_blank" rel="noopener" class="btn blue">Read Full Source Article</a>
+      <a href="{{ article.url }}" target="_blank" rel="noopener" class="btn blue">Read Original Article</a>
     </div>
   </div>
 
-  <!-- AI Engagement Suggestion Hub -->
-  <div class="card suggestion-box">
-    <div class="title">💬 Suggested Quick Comment / Reply</div>
-    <p class="summary-sub">Copy this to leave a professional engagement comment under posts about this topic:</p>
-    <textarea id="comment-box" readonly>{{ suggestions.comment }}</textarea>
-    <div class="row">
-      <button type="button" class="btn accent" onclick="copyDraft('comment-box')">Copy Professional Comment</button>
-    </div>
-  </div>
+  <h2 class="section-heading">📱 Generated Social Media Posts (Choose 1)</h2>
 
-  {% set compose = {
-    'x': 'https://twitter.com/intent/tweet?text=',
-    'facebook': 'https://www.facebook.com/',
-    'linkedin': 'https://www.linkedin.com/feed/?shareActive=true'
-  } %}
-
-  {% for p in platforms %}
-    <div class="card">
-      <div class="title">{{ p | uppercase }} Draft Post</div>
-      <form action="{{ url_for('save_draft', article_id=article.id, platform=p) }}" method="POST">
-        <textarea id="ta-{{ p }}" name="text" placeholder="Write {{ p }} draft here...">{{ drafts[p] }}</textarea>
-        <div class="row">
-          <button type="submit" class="btn primary">Save Draft</button>
-          <button type="button" class="btn" onclick="copyDraft('ta-{{ p }}')">Copy Post</button>
-          {% if p == 'x' %}
-            <a href="{{ compose[p] }}{{ drafts[p] | urlencode }}" target="_blank" class="btn blue">Open Platform</a>
-          {% else %}
-            <a href="{{ compose[p] }}" target="_blank" class="btn blue">Open Platform</a>
-          {% endif %}
-        </div>
-      </form>
+  {% for post in suggestions.posts %}
+    <div class="card generator-card">
+      <div class="generator-header">
+        <span class="post-badge">{{ post.label }}</span>
+      </div>
+      <textarea id="{{ post.id }}" class="generated-textarea">{{ post.text }}</textarea>
+      <div class="row">
+        <button type="button" class="btn accent" onclick="copyText('{{ post.id }}', this)">📋 Copy This Post</button>
+      </div>
     </div>
   {% endfor %}
 
-  <form action="{{ url_for('mark_posted', article_id=article.id) }}" method="POST">
-    <button type="submit" class="btn success big">Mark as Posted & Return</button>
-  </form>
+  <h2 class="section-heading">💬 Suggested Comments (For Engagement)</h2>
+
+  {% for comment in suggestions.comments %}
+    <div class="card generator-card">
+      <div class="generator-header">
+        <span class="comment-badge">{{ comment.label }}</span>
+      </div>
+      <textarea id="{{ comment.id }}" class="generated-textarea comment-height">{{ comment.text }}</textarea>
+      <div class="row">
+        <button type="button" class="btn primary" onclick="copyText('{{ comment.id }}', this)">💬 Copy Comment</button>
+      </div>
+    </div>
+  {% endfor %}
+
+  <div class="action-footer">
+    <a href="{{ url_for('mark_status', article_id=article.id, status='posted') }}" class="btn success big">Mark as Used & Return to Feed</a>
+  </div>
 
   <script>
-    async function copyDraft(id) {
+    async function copyText(id, btn) {
       const el = document.getElementById(id);
       if (!el) return;
       try {
         await navigator.clipboard.writeText(el.value);
-        flashBorder(el);
       } catch (err) {
         el.select();
         document.execCommand('copy');
-        flashBorder(el);
       }
-    }
-
-    function flashBorder(el) {
-      const orig = el.style.borderColor;
-      el.style.borderColor = '#e3a008';
+      
+      const origText = btn.innerText;
+      btn.innerText = "✅ Copied to Clipboard!";
+      btn.style.backgroundColor = "#14532d";
+      btn.style.color = "#ffffff";
+      
       setTimeout(() => {
-        el.style.borderColor = orig;
-      }, 1000);
+        btn.innerText = origText;
+        btn.style.backgroundColor = "";
+        btn.style.color = "";
+      }, 1500);
     }
   </script>
 {% endblock %}
