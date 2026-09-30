@@ -1,20 +1,31 @@
 {% extends "base.html" %}
 
 {% block content %}
+  <!-- Top Navigation Bar -->
+  <div class="top-nav">
+    <a href="/" class="btn default-btn">&larr; Back to Feed</a>
+  </div>
+
   <div class="card main-article-card">
     <div class="card-header">
       <span class="tag cat-tag">{{ article.category }}</span>
       <span class="tag origin-tag">{{ article.origin }}</span>
+      <span class="tag time-tag">⏱️ {{ article.reading_time or 2 }} min read</span>
     </div>
     <div class="title">{{ article.title }}</div>
     <div class="meta">Source: {{ article.source_name }} · {{ article.published_at or article.fetched_at }}</div>
-    <div class="summary">{{ article.summary|striptags|truncate(300) }}</div>
+    
+    <div class="intel-summary-box">
+      <strong>Deep Intel Preview:</strong>
+      <p>{{ article.body_text[:400] if article.body_text else article.summary[:300] }}...</p>
+    </div>
+
     <div class="row">
       <a href="{{ article.url }}" target="_blank" rel="noopener" class="btn blue">Read Original Article</a>
     </div>
   </div>
 
-  <h2 class="section-heading">📱 Generated Social Media Posts (Choose 1)</h2>
+  <h2 class="section-heading">📱 Generated Posts (Derived from Article Body Intel)</h2>
 
   {% for post in suggestions.posts %}
     <div class="card generator-card">
@@ -22,13 +33,27 @@
         <span class="post-badge">{{ post.label }}</span>
       </div>
       <textarea id="{{ post.id }}" class="generated-textarea">{{ post.text }}</textarea>
+      
       <div class="row">
-        <button type="button" class="btn accent" onclick="copyText('{{ post.id }}', this)">📋 Copy This Post</button>
+        <button type="button" class="btn accent" onclick="copyText('{{ post.id }}', this)">📋 Copy Post Text</button>
+      </div>
+
+      <!-- One-Click Social Share Links -->
+      <div class="share-hub">
+        <span class="share-label">Share Post Directly To:</span>
+        <div class="share-buttons">
+          <a href="#" onclick="shareToPlatform('x', '{{ post.id }}'); return false;" class="social-btn x-btn">X (Twitter)</a>
+          <a href="#" onclick="shareToPlatform('linkedin', '{{ post.id }}'); return false;" class="social-btn linkedin-btn">LinkedIn</a>
+          <a href="#" onclick="shareToPlatform('facebook', '{{ post.id }}'); return false;" class="social-btn facebook-btn">Facebook</a>
+          <a href="#" onclick="shareToPlatform('whatsapp', '{{ post.id }}'); return false;" class="social-btn whatsapp-btn">WhatsApp</a>
+          <a href="#" onclick="shareToPlatform('instagram', '{{ post.id }}'); return false;" class="social-btn instagram-btn">Instagram</a>
+          <a href="#" onclick="shareToPlatform('tiktok', '{{ post.id }}'); return false;" class="social-btn tiktok-btn">TikTok</a>
+        </div>
       </div>
     </div>
   {% endfor %}
 
-  <h2 class="section-heading">💬 Suggested Comments (For Engagement)</h2>
+  <h2 class="section-heading">💬 Suggested Engagement Comments</h2>
 
   {% for comment in suggestions.comments %}
     <div class="card generator-card">
@@ -43,7 +68,7 @@
   {% endfor %}
 
   <div class="action-footer">
-    <a href="{{ url_for('mark_status', article_id=article.id, status='posted') }}" class="btn success big">Mark as Used & Return to Feed</a>
+    <a href="{{ url_for('mark_status', article_id=article.id, status='posted') }}" class="btn success big">Mark as Posted & Return to Feed</a>
   </div>
 
   <script>
@@ -59,14 +84,43 @@
       
       const origText = btn.innerText;
       btn.innerText = "✅ Copied to Clipboard!";
-      btn.style.backgroundColor = "#14532d";
-      btn.style.color = "#ffffff";
-      
       setTimeout(() => {
         btn.innerText = origText;
-        btn.style.backgroundColor = "";
-        btn.style.color = "";
       }, 1500);
+    }
+
+    function shareToPlatform(platform, textId) {
+      const text = encodeURIComponent(document.getElementById(textId).value);
+      let shareUrl = "";
+
+      switch (platform) {
+        case 'x':
+          shareUrl = `https://twitter.com/intent/tweet?text=${text}`;
+          break;
+        case 'linkedin':
+          shareUrl = `https://www.linkedin.com/feed/?shareActive=true`;
+          break;
+        case 'facebook':
+          shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`;
+          break;
+        case 'whatsapp':
+          shareUrl = `https://api.whatsapp.com/send?text=${text}`;
+          break;
+        case 'instagram':
+          navigator.clipboard.writeText(document.getElementById(textId).value);
+          alert("Post text copied to clipboard! Opening Instagram...");
+          shareUrl = `https://www.instagram.com/`;
+          break;
+        case 'tiktok':
+          navigator.clipboard.writeText(document.getElementById(textId).value);
+          alert("Post text copied to clipboard! Opening TikTok...");
+          shareUrl = `https://www.tiktok.com/upload`;
+          break;
+      }
+
+      if (shareUrl) {
+        window.open(shareUrl, '_blank');
+      }
     }
   </script>
 {% endblock %}
