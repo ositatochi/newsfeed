@@ -1,17 +1,27 @@
 import feedparser
 from db import get_conn
 
+def detect_category(title, summary):
+    text = f"{title} {summary}".lower()
+    if any(k in text for k in ['ai', 'llm', 'gpt', 'neural', 'machine learning', 'claude', 'openai', 'gemini']):
+        return "AI & ML"
+    elif any(k in text for k in ['code', 'python', 'developer', 'software', 'git', 'api', 'bug', 'framework']):
+        return "Software & Dev"
+    elif any(k in text for k in ['hack', 'security', 'breach', 'vulnerability', 'phishing', 'malware', 'cyber']):
+        return "Cybersecurity & Hacks"
+    return "Tech News"
+
 def crawl():
     conn = get_conn()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, feed_url FROM sources WHERE active = 1")
+    cursor.execute("SELECT id, name, feed_url, category, origin FROM sources WHERE active = 1")
     sources = cursor.fetchall()
     new_count = 0
 
     for source in sources:
         try:
             feed = feedparser.parse(source["feed_url"])
-            for entry in feed.entries[:10]:
+            for entry in feed.entries[:15]:
                 title = entry.get("title", "No Title")
                 url = entry.get("link", "")
                 published_at = entry.get("published", entry.get("updated", None))
@@ -20,12 +30,15 @@ def crawl():
                 if not url:
                     continue
 
+                category = detect_category(title, summary) or source["category"]
+                origin = source["origin"]
+
                 cursor.execute(
                     """
-                    INSERT OR IGNORE INTO articles (source_id, title, url, published_at, summary)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT OR IGNORE INTO articles (source_id, title, url, published_at, summary, category, origin)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                     """,
-                    (source["id"], title, url, published_at, summary)
+                    (source["id"], title, url, published_at, summary, category, origin)
                 )
                 if cursor.rowcount > 0:
                     new_count += 1
