@@ -15,6 +15,7 @@
         <label for="category">Category Filter:</label>
         <select name="category" id="category" onchange="this.form.submit()">
           <option value="All" {% if category == 'All' %}selected{% endif %}>All Categories</option>
+          <option value="Gadgets & Hardware" {% if category == 'Gadgets & Hardware' %}selected{% endif %}>Gadgets & Hardware</option>
           <option value="AI & ML" {% if category == 'AI & ML' %}selected{% endif %}>AI & ML</option>
           <option value="Software & Dev" {% if category == 'Software & Dev' %}selected{% endif %}>Software & Dev</option>
           <option value="Cybersecurity & Hacks" {% if category == 'Cybersecurity & Hacks' %}selected{% endif %}>Cybersecurity & Hacks</option>
