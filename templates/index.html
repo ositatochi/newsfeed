@@ -3,15 +3,16 @@
 {% block content %}
   {% if quote %}
     <div class="quote-card">
-      <p class="quote-text">"{{ quote.quote }}"</p>
-      <p class="quote-author">— {{ quote.author }}</p>
+      <div class="quote-text">“{{ quote.quote }}”</div>
+      <div class="quote-author">— {{ quote.author }}</div>
     </div>
   {% endif %}
 
+  <!-- Filter Dropdowns Bar -->
   <div class="filter-card">
     <form method="GET" action="/" class="filter-form">
       <div class="filter-group">
-        <label for="category">Category:</label>
+        <label for="category">Category Filter:</label>
         <select name="category" id="category" onchange="this.form.submit()">
           <option value="All" {% if category == 'All' %}selected{% endif %}>All Categories</option>
           <option value="AI & ML" {% if category == 'AI & ML' %}selected{% endif %}>AI & ML</option>
@@ -22,9 +23,9 @@
       </div>
 
       <div class="filter-group">
-        <label for="origin">Origin:</label>
+        <label for="origin">Region Filter:</label>
         <select name="origin" id="origin" onchange="this.form.submit()">
-          <option value="All" {% if origin == 'All' %}selected{% endif %}>All Origins</option>
+          <option value="All" {% if origin == 'All' %}selected{% endif %}>All Regions</option>
           <option value="Global / US" {% if origin == 'Global / US' %}selected{% endif %}>Global / US</option>
           <option value="Nigeria / Africa" {% if origin == 'Nigeria / Africa' %}selected{% endif %}>Nigeria / Africa</option>
         </select>
@@ -33,9 +34,12 @@
   </div>
 
   {% if not articles %}
-    <p class="muted">No new articles found matching these filters. Try switching filters or running the crawler.</p>
+    <div class="card empty-state">
+      <p>No news items match these filters right now.</p>
+    </div>
   {% else %}
-    <div class="feed-stats">Showing {{ articles|length }} of {{ total_articles }} curated feeds</div>
+    <div class="feed-stats">Showing {{ articles|length }} of {{ total_articles }} feeds (Page {{ page }} of {{ total_pages }})</div>
+
     {% for article in articles %}
       <div class="card">
         <div class="card-header">
@@ -44,22 +48,23 @@
         </div>
         <div class="title">{{ article.title }}</div>
         <div class="meta">{{ article.source_name }} · {{ article.published_at or article.fetched_at }}</div>
+        
         <div class="row">
-          <a href="{{ url_for('article', article_id=article.id) }}" class="btn primary">Draft Post & Comments</a>
+          <a href="{{ url_for('article', article_id=article.id) }}" class="btn primary">⚡ Generate Social Posts & Comments</a>
           <a href="{{ url_for('mark_status', article_id=article.id, status='rejected') }}" class="btn danger">Dismiss</a>
         </div>
       </div>
     {% endfor %}
 
-    <!-- Pagination -->
+    <!-- Pagination Controls -->
     {% if total_pages > 1 %}
       <div class="pagination">
         {% if page > 1 %}
-          <a href="{{ url_for('index', category=category, origin=origin, page=page-1) }}" class="btn">&laquo; Prev</a>
+          <a href="{{ url_for('index', category=category, origin=origin, page=page-1) }}" class="btn pagination-btn">&laquo; Previous</a>
         {% endif %}
-        <span class="page-indicator">Page {{ page }} of {{ total_pages }}</span>
+        <span class="page-indicator">Page <strong>{{ page }}</strong> of {{ total_pages }}</span>
         {% if page < total_pages %}
-          <a href="{{ url_for('index', category=category, origin=origin, page=page+1) }}" class="btn">Next &raquo;</a>
+          <a href="{{ url_for('index', category=category, origin=origin, page=page+1) }}" class="btn pagination-btn">Next &raquo;</a>
         {% endif %}
       </div>
     {% endif %}
