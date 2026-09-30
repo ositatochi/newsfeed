@@ -2,3 +2,5 @@ flask
 feedparser
 apscheduler
 gunicorn
+beautifulsoup4
+requests
