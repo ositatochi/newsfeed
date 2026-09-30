@@ -1,16 +1,10 @@
 from pathlib import Path
-import random
-from flask import Flask, render_template, request, redirect, url_for, abort, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, abort, jsonify
 from db import get_conn
 from helpers import generate_engagement_suggestions
 
 app = Flask(__name__)
 BASE_DIR = Path(__file__).parent
-PLATFORMS = ("x", "facebook", "linkedin")
-
-@app.template_filter('uppercase')
-def uppercase_filter(s):
-    return s.upper() if s else ''
 
 @app.route("/")
 def index():
@@ -38,7 +32,7 @@ def index():
         query += " AND a.origin = ?"
         params.append(origin)
 
-    # Count total items for pagination
+    # Total count for pagination
     count_query = f"SELECT COUNT(*) FROM ({query})"
     cursor.execute(count_query, params)
     total_articles = cursor.fetchone()[0]
@@ -82,29 +76,10 @@ def article(article_id):
         conn.close()
         abort(404)
 
-    cursor.execute("SELECT platform, text FROM drafts WHERE article_id = ?", (article_id,))
-    rows = cursor.fetchall()
     conn.close()
+    suggestions = generate_engagement_suggestions(art["title"], art["summary"], art["category"], art["origin"])
 
-    suggestions = generate_engagement_suggestions(art["title"], art["summary"], art["category"])
-
-    drafts = {p: "" for p in PLATFORMS}
-    for row in rows:
-        drafts[row["platform"]] = row["text"]
-
-    # Pre-populate draft suggestions if empty
-    if not drafts["linkedin"]:
-        drafts["linkedin"] = suggestions["linkedin"]
-    if not drafts["x"]:
-        drafts["x"] = suggestions["x"]
-
-    return render_template(
-        "article.html",
-        article=art,
-        drafts=drafts,
-        suggestions=suggestions,
-        platforms=PLATFORMS
-    )
+    return render_template("article.html", article=art, suggestions=suggestions)
 
 @app.route("/mark/<int:article_id>/<status>")
 def mark_status(article_id, status):
@@ -116,32 +91,5 @@ def mark_status(article_id, status):
     conn.close()
     return redirect(url_for("index"))
 
-@app.route("/save_draft/<int:article_id>/<platform>", methods=["POST"])
-def save_draft(article_id, platform):
-    if platform not in PLATFORMS:
-        abort(400)
-    text = request.form.get("text", "")
-    conn = get_conn()
-    with conn:
-        conn.execute("""
-            INSERT INTO drafts (article_id, platform, text)
-            VALUES (?, ?, ?)
-            ON CONFLICT(article_id, platform) DO UPDATE SET text = excluded.text
-        """, (article_id, platform, text))
-    conn.close()
-    return redirect(url_for("article", article_id=article_id))
-
-@app.route("/posted/<int:article_id>", methods=["POST"])
-def mark_posted(article_id):
-    conn = get_conn()
-    with conn:
-        conn.execute("UPDATE articles SET status = 'posted' WHERE id = ?", (article_id,))
-    conn.close()
-    return redirect(url_for("index"))
-
-@app.route("/manifest.json")
-def manifest():
-    return send_from_directory(BASE_DIR / "static", "manifest.json")
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    app.run(host="0.0.0.0", port=5000, debug=True)
