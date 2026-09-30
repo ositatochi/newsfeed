@@ -1,19 +1,39 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#111111">
-  <title>{% block title %}TechFeed{% endblock %}</title>
+  <meta name="theme-color" content="#0d1b2a">
+  <title>{% block title %}TechFeed | Social Engagement Engine{% endblock %}</title>
   <link rel="manifest" href="/manifest.json">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
   <header class="topbar">
-    <a href="/" class="brand">TechFeed</a>
+    <div class="topbar-content">
+      <a href="/" class="brand">TechFeed <span class="badge">Engagement Studio</span></a>
+      <button id="themeToggle" class="btn theme-btn" onclick="toggleTheme()">🌙</button>
+    </div>
   </header>
   <main class="container">
     {% block content %}{% endblock %}
   </main>
+  <script>
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      document.getElementById('themeToggle').innerText = theme === 'dark' ? '🌙' : '☀️';
+      localStorage.setItem('tf_theme', theme);
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      applyTheme(current === 'dark' ? 'light' : 'dark');
+    }
+
+    (function() {
+      const savedTheme = localStorage.getItem('tf_theme') || 'dark';
+      applyTheme(savedTheme);
+    })();
+  </script>
 </body>
 </html>
